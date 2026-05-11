@@ -94,7 +94,7 @@ This layer is the **maintainability seam** — product/ops can change routing lo
 
 ## 🧪 Try the built-in examples
 
-The Streamlit UI ships with example complaints in a dropdown — including the headline "Payment failed but money deducted" scenario. Pick one, hit **Run support agent**, and inspect the trace.
+The Streamlit UI ships with example complaints in a dropdown — including the headline "Payment failed but money deducted" scenario. Pick one, hit **Run support agent**, and inspect the given trace.
 
 ## ⚙️ Configuration
 
