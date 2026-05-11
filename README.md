@@ -105,8 +105,3 @@ The Streamlit UI ships with example complaints in a dropdown — including the h
 | `OPENAI_API_KEY`| —              | Required                      |
 | `OPENAI_MODEL`  | `gpt-4o-mini`  | Any chat-completions model    |
 
-## 🛠️ Extending
-
-- **Add a category**: extend the `CATEGORY` Literal in `workflow.py`, update the classifier prompt's allowed list, and (optionally) add a routing rule in `escalation_decision`.
-- **Add a node** (e.g., a sentiment node or a knowledge-base RAG step): write a function `(state) -> state` and wire it into `build_graph()` with `g.add_node` / `g.add_edge`.
-- **Replace the LLM**: swap the `_call_llm_json` helper to call any other provider; the rest of the graph is provider-agnostic.
