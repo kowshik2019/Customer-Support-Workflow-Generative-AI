@@ -1,82 +1,112 @@
-# Customer-Support-Workflow-Generative-AI
+# 🛟 AI Customer Support Agent (LangGraph + OpenAI + Streamlit)
 
-Customer Support Agent — Complete Walkthrough
-Let me break this down into two parts: first the use case (what problem we're solving and how the system thinks), then the code (file by file, function by function).
+An end-to-end customer-support automation agent that takes a free-text complaint, classifies it, scores its urgency, drafts a response, suggests concrete resolution steps, and decides whether to auto-resolve or escalate to a human team.
 
-PART 1: The Use Case — Step by Step
-The Business Problem
-Imagine you run a payments-heavy product (e-commerce, fintech, SaaS). Your support inbox gets thousands of complaints daily, and they all look different:
+## 🧭 Architecture
 
-"Money got deducted but payment failed!" → urgent, financial
-"How do I change my email?" → trivial, can wait
-"App crashes on checkout" → engineering issue, blocks revenue
-"Refund not received in 10 days" → SLA breach, customer is angry
+```
+User Complaint
+      │
+      ▼
+┌──────────────┐
+│ Classify     │  → Payment / Login / Refund / Bug / General
+└──────┬───────┘
+       ▼
+┌──────────────┐
+│ Urgency      │  → LOW / MEDIUM / HIGH / CRITICAL
+└──────┬───────┘
+       ▼
+┌──────────────┐
+│ AI Resolution│  → empathetic reply + 3-6 resolution steps
+└──────┬───────┘
+       ▼
+┌──────────────┐
+│ Escalation   │  → rule layer (urgency × category × confidence)
+│ Decision     │
+└──────┬───────┘
+       ▼
+┌──────────────┐
+│ Close /      │  → RESOLVED or ESCALATED
+│ Escalate     │
+└──────┬───────┘
+       ▼
+   UI Response
+```
 
-A human agent has to read each one, decide what it is, decide how urgent it is, write a reply, and figure out who should handle it. That's slow and inconsistent.
-Our agent automates the first 80% of that work so humans only touch the tickets that actually need them.
-The Flagship Scenario: "Payment Failed but Money Deducted"
-This is the hardest, most common, most emotionally charged support ticket in any payment-driven product. Let's trace what happens when a customer submits it.
-Customer types:
+Implemented as a **LangGraph** `StateGraph` in `workflow.py`. The Streamlit UI in `app.py` invokes the compiled graph and renders the result.
 
-"I tried to pay ₹2,499 for my order today. The website said 'Payment Failed' but the money has been deducted from my bank account. This is the second time. Please refund immediately!"
+## 📁 Project structure
 
-Step 1 — Classification
-The agent reads the complaint and asks: which bucket does this belong to? It has 5 buckets: Payment Issue, Login Problem, Refund Request, Technical Bug, General Inquiry. Here the keywords "paid", "deducted", "refund" point clearly to Payment Issue. The classifier also returns a confidence score (say 0.95) so we know it's sure.
+```
+customer_support_agent/
+├── workflow.py        # LangGraph nodes + graph builder
+├── app.py             # Streamlit UI
+├── requirements.txt
+├── .env.example       # copy to .env and add your key
+└── README.md
+```
 
-Step 2 — Urgency Detection
-Next question: how bad is this? The agent uses four levels:
+## 🚀 Setup
 
-LOW (general question, no impact)
-MEDIUM (annoying but workaround exists)
-HIGH (blocked, money or access at risk)
-CRITICAL (active financial loss, fraud, security)
+```bash
+# 1. Create + activate a virtualenv (optional but recommended)
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
-Money was deducted and the user says "second time" — that's HIGH or CRITICAL. The agent assigns HIGH with the reason "financial impact, customer reports money deducted without successful transaction."
+# 2. Install dependencies
+pip install -r requirements.txt
 
-Step 3 — AI Resolution (Response + Steps)
-Now the agent drafts two things:
+# 3. Configure environment
+cp .env.example .env
+# then edit .env and set OPENAI_API_KEY=sk-...
 
-A customer-facing message — empathetic, brief, sets expectations.
+# 4. (Optional) sanity-check the graph from CLI
+python workflow.py
 
-"I'm really sorry this happened, and I understand the frustration of seeing money leave your account for a failed payment. Most banks auto-reverse these within 5–7 business days, and I'm escalating yours to our Payments team right now to verify and accelerate if needed."
+# 5. Launch the Streamlit UI
+streamlit run app.py
+```
 
+Open the URL Streamlit prints (usually http://localhost:8501).
 
-A list of resolution steps — the actual playbook:
+## 🧩 Categories handled
 
-Share your bank transaction reference ID and timestamp
-Confirm the last 4 digits of the card / UPI ID used
-Most failed-payment debits auto-reverse in 5–7 business days
-If not reversed, we'll raise a formal chargeback dispute
-Meanwhile, here's a coupon for your inconvenience
-You'll get an email update within 24 hours
+| Category         | Examples                                    |
+|------------------|---------------------------------------------|
+| Payment Issue    | Money deducted but payment failed           |
+| Login Problem    | Can't log in, password reset not arriving   |
+| Refund Request   | Refund pending beyond SLA                   |
+| Technical Bug    | App crash, broken feature                   |
+| General Inquiry  | Catch-all (shipping, hours, etc.)           |
 
-Step 4 — Escalation Decision
+## 🚦 Escalation rules (in `escalation_decision`)
 
-Now a critical question: should the AI close this on its own, or pass it to a human?
-The rules say:
+These are kept as plain Python so they're easy to tune without prompting:
 
-HIGH urgency + Payment Issue → escalate to Payments team
+- `CRITICAL` urgency → always escalate
+- `HIGH` + Payment / Refund → Payments team
+- `HIGH` + Technical Bug → Engineering on-call
+- `HIGH` + Login Problem → Identity & Security
+- Classifier confidence < 0.45 → human triage
+- Otherwise → auto-resolve
 
-So the ticket gets flagged for human follow-up, but the customer already received an immediate, well-crafted response (instead of waiting 4 hours for an agent to type one).
+This layer is the **maintainability seam** — product/ops can change routing logic without touching the LLM prompts.
 
-Step 5 — Close or Escalate (final state)
-Status is set to ESCALATED. The full state object — complaint, category, urgency, response, steps, escalation reason, trace — is returned to the UI.
+## 🧪 Try the built-in examples
 
-Step 6 — UI Display
-Streamlit shows everything: green/red status badges, the response card, the resolution checklist, the routing decision, and a debug trace for support managers.
-How the Other Categories Flow
-The same 5-node pipeline handles every ticket, but the outputs differ:
+The Streamlit UI ships with example complaints in a dropdown — including the headline "Payment failed but money deducted" scenario. Pick one, hit **Run support agent**, and inspect the trace.
 
-ComplaintCategoryUrgencyDecision"Can't log in, password reset never arrives"Login ProblemHIGHEscalate → Identity team"Do you ship to Singapore?"General InquiryLOWAuto-resolve"Refund stuck 10 days"Refund RequestHIGHEscalate → Payments"App crashes on checkout"Technical BugHIGHEscalate → Engineering"How do I change my display name?"General InquiryLOWAuto-resolve
+## ⚙️ Configuration
 
-The General Inquiry category is the safety net — if nothing else fits, the ticket lands there. That's why your spec said "when user sends a request should fall in one of the category" — we guarantee 100% routing coverage.
+`.env` keys:
 
-Why LangGraph
-You could tell GPT-4 "classify, prioritize, respond, and decide" in one prompt. But:
+| Key             | Default        | Purpose                       |
+|-----------------|----------------|-------------------------------|
+| `OPENAI_API_KEY`| —              | Required                      |
+| `OPENAI_MODEL`  | `gpt-4o-mini`  | Any chat-completions model    |
 
-Each step is debuggable independently — if classification is wrong, you fix the classifier prompt without touching anything else
-Rules can live outside the LLM — escalation logic is plain Python, so product managers can change routing without prompt engineering
-State is inspectable — at every node you can see what was decided
-Easy to extend — add a sentiment node, a knowledge-base lookup node, a translation node, etc., by inserting one function
+## 🛠️ Extending
 
-LangGraph makes the workflow look like a flowchart, which matches how humans actually reason about support tickets.
+- **Add a category**: extend the `CATEGORY` Literal in `workflow.py`, update the classifier prompt's allowed list, and (optionally) add a routing rule in `escalation_decision`.
+- **Add a node** (e.g., a sentiment node or a knowledge-base RAG step): write a function `(state) -> state` and wire it into `build_graph()` with `g.add_node` / `g.add_edge`.
+- **Replace the LLM**: swap the `_call_llm_json` helper to call any other provider; the rest of the graph is provider-agnostic.
