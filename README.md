@@ -58,7 +58,7 @@ pip install -r requirements.txt
 
 # 3. Configure environment
 cp .env.example .env
-# then edit .env and set OPENAI_API_KEY=sk-...
+# then edit .env and set OPENAI_API_KEY= Your API Key Here
 
 # 4. (Optional) sanity-check the graph from CLI
 python workflow.py
@@ -94,7 +94,7 @@ This layer is the **maintainability seam** — product/ops can change routing lo
 
 ## 🧪 Try the built-in examples
 
-The Streamlit UI ships with example complaints in a dropdown — including the headline "Payment failed but money deducted" scenario. Pick one, hit **Run support agent**, and inspect the given trace.
+The Streamlit UI ships with example complaints in a dropdown — including the headline "Payment failed but money deducted" scenario. Pick one, hit **Run support agent**, and inspect the trace.
 
 ## ⚙️ Configuration
 
